@@ -9,7 +9,7 @@ import altair as alt
 # Load the pre-trained model
 model = load_model("regressor.keras")
 
-# Define function for stock price prediction
+# Function to predict the next day's stock price
 def predict_next_day(data, sc):
     """
     Predicts the next day's stock price based on input data.
@@ -22,6 +22,17 @@ def predict_next_day(data, sc):
     predicted_price = model.predict(last_100_days)
     return sc.inverse_transform(predicted_price)[0][0]  # Inverse scale the prediction
 
+# Function to get the next trading day
+def get_next_trading_day(current_date):
+    """
+    Adjusts the given date to find the next trading day.
+    Skips weekends and known public holidays (simplified for weekends).
+    """
+    next_day = current_date + pd.Timedelta(days=1)
+    while next_day.weekday() in [5, 6]:  # 5 = Saturday, 6 = Sunday
+        next_day += pd.Timedelta(days=1)
+    return next_day
+
 # Streamlit app setup
 st.title("Stock Market Analysis & Prediction App 📈")
 
@@ -32,7 +43,7 @@ Example: `RELIANCE.NS` or `TCS.BO`
 """)
 
 # User inputs
-ticker_symbol = st.text_input("Enter the stock ticker symbol (e.g., MSFT, RELIANCE.NS(For Indian Companies))", "AAPL")
+ticker_symbol = st.text_input("Enter the stock ticker symbol (e.g., MSFT, RELIANCE.NS (For Indian Companies))", "AAPL")
 starting_date = st.date_input("Enter the starting date", value=pd.to_datetime("2021-01-01"))
 ending_date = st.date_input("Enter the ending date", value=pd.to_datetime("today"))
 
@@ -111,14 +122,14 @@ else:
                 # Get today's price
                 today_price = dataset[-1][0]
 
-                # Predict for the next day
+                # Predict for the next trading day
+                next_trading_day = get_next_trading_day(pd.to_datetime(ending_date))
                 next_day_price = predict_next_day(dataset_scaled, sc)
 
                 # Display today's price and predicted value
                 st.write("### Predicted Stock Price")
-                prediction_date = pd.to_datetime(ending_date) + pd.Timedelta(days=1)
                 prediction_df = pd.DataFrame({
-                    "Date": ["Today", prediction_date],
+                    "Date": ["Today", next_trading_day.strftime('%Y-%m-%d')],
                     "Price": [f"{currency_symbol}{today_price:,.2f}", f"{currency_symbol}{next_day_price:,.2f}"]
                 })
                 st.write(prediction_df)
